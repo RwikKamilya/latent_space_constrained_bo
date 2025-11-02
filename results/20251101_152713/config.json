@@ -1,0 +1,11 @@
+{
+  "seed": 42,
+  "n_runs_per_experiment": 20,
+  "speed_reducer": {
+    "n_dim": 7,
+    "n_constraints": 11,
+    "initial_samples": 20,
+    "budget": 100,
+    "population_size": 200
+  }
+}
