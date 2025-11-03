@@ -1,6 +1,7 @@
 # Per-Block Code Comments for Jupyter Notebook
 
 ## How to Use This File
+
 Copy the relevant block comment before each cell in your Jupyter notebook for inline documentation.
 
 ---
@@ -16,18 +17,8 @@ Purpose:
 - Configures GPU acceleration for efficient GP training
 - Establishes deterministic behavior for fair method comparison
 
-Key Components:
-1. Device selection: Uses CUDA when available (critical for large constraint sets)
-2. set_global_seed(): Ensures reproducibility across NumPy, PyTorch, and Python random
-3. Deterministic settings: Makes CUDA operations reproducible (may reduce performance)
-
-References:
-- Section 3.4 (Maathuis et al.): Discusses computational complexity where GPU acceleration helps
 - Paper reports results over multiple runs - reproducibility is essential
 
-Notes:
-- torch.float64 is used for numerical stability in GP training
-- Deterministic CUDA may be slower but ensures exact reproducibility
 """
 ```
 
@@ -45,7 +36,7 @@ Known optimum: f* = 2996.3482 (used for convergence assessment)
 
 Variables:
 - x1 (b): face width [2.6, 3.6]
-- x2 (m): module of teeth [0.7, 0.8]  
+- x2 (m): module of teeth [0.7, 0.8]
 - x3 (n): number of teeth [17, 28] - INTEGER
 - x4, x5 (l1, l2): shaft lengths [7.3, 8.3]
 - x6, x7 (d1, d2): shaft diameters [2.9, 3.9], [5.0, 5.5]
@@ -67,7 +58,7 @@ Integer Handling:
 - All other variables are continuous
 
 References:
-- Problem source: Lemonge et al. (2010)  
+- Problem source: Lemonge et al. (2010)
 - Section 4.1 (Maathuis et al.): Details this as benchmark problem
 - Table 3: Shows comparative results across methods
 
@@ -96,7 +87,7 @@ A GP is defined by mean m(x) and covariance k(x, x'):
     f(x) ~ GP(m(x), k(x, x'))
 
 Posterior predictions (Equations 7-8):
-    μ(x) = k(x,X)K^(-1)f  
+    μ(x) = k(x,X)K^(-1)f
     σ²(x) = k(x,x) - k(x,X)K^(-1)k(X,x)
 
 Key Components:
@@ -183,7 +174,7 @@ Manages hyperrectangle [c - r, c + r] where:
 
 Hyperparameters (from TuRBO paper):
 - init_frac=0.8: Start with 80% of full domain
-- min_frac=0.05: Minimum 5% of domain (prevents over-contraction)  
+- min_frac=0.05: Minimum 5% of domain (prevents over-contraction)
 - max_frac=1.0: Can expand to full domain
 - grow=1.6: Expand by 60% after successes
 - shrink=0.5: Contract by 50% after failures
@@ -200,7 +191,7 @@ Key Methods:
 
 3. step(success): Update TR size based on iteration outcome
    - Success: increment succ counter, reset fail
-   - Failure: increment fail counter, reset succ  
+   - Failure: increment fail counter, reset succ
    - Expand when succ ≥ succ_tol
    - Contract when fail ≥ fail_tol
 
@@ -215,7 +206,7 @@ Cheap Filtering (Speed Reducer specific):
 
 Find Feasible Seed:
 - Goal: Ensure ≥1 feasible point in initial DoE
-- Method: 
+- Method:
   1. Generate many candidates (50k per batch)
   2. Apply cheap filter
   3. Fully evaluate survivors
@@ -263,7 +254,7 @@ Design Rationale:
 
 ## BLOCK 5: Model Builders and Constrained Thompson Sampling
 
-```python
+````python
 """
 Cell 5: Model Building and Constrained Thompson Sampling (CTS)
 
@@ -283,7 +274,7 @@ Three Methods:
 
 2. PCA-GP SCBO (Linear reduction):
    Mathematical steps (Section 3.1):
-   a) Center constraint matrix: C̄ = C - mean  
+   a) Center constraint matrix: C̄ = C - mean
    b) Covariance: Σ = (1/(N-1))C̄^T C̄ ∈ R^(G×G)
    c) Eigendecomposition: Σ = ΨΛΨ^T
       - Λ = diag(λ_1, ..., λ_G) with λ_1 ≥ λ_2 ≥ ... ≥ λ_G
@@ -306,7 +297,7 @@ Three Methods:
    d) Project: z_q(c) = Σ_i α_i^q k(c_i, c)  [Eq 26]
    e) Inverse (pre-image): c̃ = Ψ_g^(-1) z (approximate)
 
-   - g+1 GPs total: 1 for f, g for z_1, ..., z_g  
+   - g+1 GPs total: 1 for f, g for z_1, ..., z_g
    - Complexity: Similar to PCA
    - Handles nonlinear constraint manifolds
    - Reference: Section 3.2, Equations (23-26)
@@ -355,44 +346,49 @@ Critical Detail - Latent Space Handling:
 if reducer is not None:
     Z_np = Z_samp.cpu().numpy()
     C_np = reducer.inverse_transform(Z_np)  # MUST project back!
-```
+````
+
 Why necessary?
+
 - Feasibility check (c_j ≤ 0) only meaningful in original G-dimensional space
 - Latent space Z has no interpretable feasibility boundaries
 - Must reconstruct C̃ from Z̃ before checking constraints
 
-Reference: Section 3.3 emphasizes "validity of a feasible design is checked 
+Reference: Section 3.3 emphasizes "validity of a feasible design is checked
 in the original space rather than within the low-dimensional subspace"
 
 Comparison of Acquisitions:
 ┌─────────────────────┬──────────────────────┬────────────────────┐
-│ Situation           │ Acquisition          │ Objective          │
+│ Situation │ Acquisition │ Objective │
 ├─────────────────────┼──────────────────────┼────────────────────┤
-│ No feasible pts yet │ Feasibility-first    │ Maximize P(feas)   │
-│ ≥1 feasible pt      │ Constrained TS       │ Minimize f s.t. c  │
+│ No feasible pts yet │ Feasibility-first │ Maximize P(feas) │
+│ ≥1 feasible pt │ Constrained TS │ Minimize f s.t. c │
 └─────────────────────┴──────────────────────┴────────────────────┘
 
 Complexity Comparison:
 ┌──────────┬─────────────────┬─────────────────┬──────────────┐
-│ Method   │ # GPs           │ Training        │ Memory       │
+│ Method │ # GPs │ Training │ Memory │
 ├──────────┼─────────────────┼─────────────────┼──────────────┤
-│ SCBO     │ G+1             │ O((G+1)N³)      │ O((G+1)N²)   │
-│ PCA-GP   │ g+1             │ O((g+1)N³ + G³) │ O((g+1)N²)   │
-│ kPCA-GP  │ g+1             │ O((g+1)N³ + G³) │ O((g+1)N²)   │
+│ SCBO │ G+1 │ O((G+1)N³) │ O((G+1)N²) │
+│ PCA-GP │ g+1 │ O((g+1)N³ + G³) │ O((g+1)N²) │
+│ kPCA-GP │ g+1 │ O((g+1)N³ + G³) │ O((g+1)N²) │
 └──────────┴─────────────────┴─────────────────┴──────────────┘
 
 When G=1786, g=35, N=416 (aeroelastic case):
+
 - SCBO: 1787 GPs, infeasible due to memory
 - PCA/kPCA: 36 GPs, ~50× reduction in GPs
 
 References:
+
 - Section 2.3: Constrained BO theory
 - Section 3: Dimensionality reduction methods
 - Section 3.4: Complexity analysis
 - Algorithm 1: Constrained Thompson Sampling
 - Hernández-Lobato et al. (2017): Thompson Sampling for BO
-"""
-```
+  """
+
+````
 
 ---
 
@@ -451,7 +447,7 @@ RETURN: All evaluated points, objectives, constraints, best history
 Key Design Decisions:
 
 1. Success Definition:
-   success = (found feasible when none before) OR 
+   success = (found feasible when none before) OR
              (found better feasible than previous best)
    - Uses tolerance 1e-12 to handle floating point
    - Reference: Trust region papers use similar criteria
@@ -549,7 +545,7 @@ Potential Extensions:
 4. Adaptive g: Vary latent dimensions based on eigenvalue decay
 5. Early stopping: Terminate if no improvement after K iterations
 """
-```
+````
 
 ---
 
@@ -715,6 +711,7 @@ Reproducibility Note:
 1. **For Inline Documentation**: Copy the block comment before each corresponding cell in your Jupyter notebook.
 
 2. **For Understanding Flow**: Read comments sequentially to understand how methods build on each other:
+
    - Blocks 1-2: Setup and problem definition
    - Block 3: GP infrastructure (used by all methods)
    - Block 4: Trust regions and feasibility handling
@@ -735,4 +732,4 @@ Reproducibility Note:
 
 ---
 
-*End of Per-Block Comments*
+_End of Per-Block Comments_
